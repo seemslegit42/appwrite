@@ -1582,19 +1582,10 @@ services:
 
   appwrite-autogravity:
     container_name: appwrite-autogravity
-    image: ghcr.io/appwrite/autogravity:0.0.3
+    image: ghcr.io/appwrite/autogravity:0.0.4
     restart: unless-stopped
     networks:
       - appwrite
-    healthcheck:
-      test:
-        - CMD
-        - bash
-        - -c
-        - 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /healthz HTTP/1.0\r\n\r\n" >&3 && grep -q "200 OK" <&3'
-      interval: 5s
-      timeout: 5s
-      retries: 3
 
   clickhouse:
     image: clickhouse/clickhouse-server:26.4.3-alpine
