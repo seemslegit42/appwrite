@@ -41,8 +41,6 @@ class Get extends Action
 {
     use HTTP;
 
-    private const AUTOGRAVITY_MAX_BYTES = 10 * 1024 * 1024;
-
     private const GRAVITY_AUTO = 'auto';
 
     public static function getName()
@@ -271,6 +269,13 @@ class Get extends Action
             throw new Exception(Exception::STORAGE_FILE_TYPE_UNSUPPORTED, $e->getMessage());
         }
 
+        if ($gravity === self::GRAVITY_AUTO && !$autogravity->isEnabled()) {
+            throw new Exception(
+                Exception::GENERAL_ARGUMENT_INVALID,
+                'Autogravity needs to be configured with _APP_AUTOGRAVITY_HOST to use automatic gravity'
+            );
+        }
+
         if (
             $gravity === self::GRAVITY_AUTO
             && $width > 0
@@ -380,10 +385,7 @@ class Get extends Action
      */
     private function prepareForAutogravity(string $source, string $type): array
     {
-        if (
-            \in_array($type, ['jpg', 'jpeg', 'png', 'webp'], true)
-            && \strlen($source) < self::AUTOGRAVITY_MAX_BYTES
-        ) {
+        if (\in_array($type, ['jpg', 'jpeg', 'png', 'webp'], true)) {
             return ['source' => $source, 'rotation' => 0];
         }
 

@@ -6,6 +6,7 @@ namespace Tests\Unit\Autogravity;
 
 use Appwrite\Autogravity\Client;
 use Appwrite\Autogravity\Detector;
+use Appwrite\Autogravity\Exception;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
@@ -17,6 +18,17 @@ use Utopia\Psr7\Stream;
 
 final class DetectorTest extends TestCase
 {
+    public function testRejectsDetectionWhenDisabled(): void
+    {
+        $detector = new Detector(null, new Cache(new Memory()));
+
+        $this->assertFalse($detector->isEnabled());
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Autogravity needs to be configured with _APP_AUTOGRAVITY_HOST to use automatic gravity');
+
+        $detector->get('source-image');
+    }
+
     public function testCachesDetectionBySource(): void
     {
         $http = new CountingClient(new Response(
@@ -24,6 +36,8 @@ final class DetectorTest extends TestCase
             body: new Stream('{"gravity":{"x":0.7,"y":0.4},"confidence":0.9}')
         ));
         $detector = new Detector(new Client($http), new Cache(new Memory()));
+
+        $this->assertTrue($detector->isEnabled());
 
         $first = $detector->get('source-image', 'first-analysis-image');
         $second = $detector->get('source-image', 'different-analysis-image');

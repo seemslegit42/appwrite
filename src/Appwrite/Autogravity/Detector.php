@@ -9,13 +9,22 @@ class Detector
     private const CACHE_TTL = 15_552_000;
 
     public function __construct(
-        private readonly Client $client,
+        private readonly ?Client $client,
         private readonly Cache $cache
     ) {
     }
 
+    public function isEnabled(): bool
+    {
+        return $this->client !== null;
+    }
+
     public function get(string $source, ?string $analysis = null): Gravity
     {
+        if ($this->client === null) {
+            throw new Exception('Autogravity needs to be configured with _APP_AUTOGRAVITY_HOST to use automatic gravity');
+        }
+
         $key = 'autogravity-' . \hash('sha256', $source);
         $cached = $this->cache->load($key, self::CACHE_TTL);
         if (

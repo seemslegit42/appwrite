@@ -105,11 +105,14 @@ $container->set('screenshots', function () {
 }, []);
 
 $container->set('autogravity', function (Cache $cache) {
-    $client = (new Client((new SwooleClientAdapter())->withConnectionReuse()))
-        ->withBaseUri(System::getEnv('_APP_AUTOGRAVITY_HOST', 'http://appwrite-autogravity:8080'))
-        ->withTimeout(30);
+    $host = System::getEnv('_APP_AUTOGRAVITY_HOST', '');
+    $client = $host === ''
+        ? null
+        : (new Client((new SwooleClientAdapter())->withConnectionReuse()))
+            ->withBaseUri($host)
+            ->withTimeout(30);
 
-    return new AutogravityDetector(new AutogravityClient($client), $cache);
+    return new AutogravityDetector($client === null ? null : new AutogravityClient($client), $cache);
 }, ['cache']);
 
 $container->set('telemetry', fn () => new NoTelemetry(), []);

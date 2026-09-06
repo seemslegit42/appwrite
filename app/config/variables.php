@@ -908,7 +908,7 @@ return [
                 'name' => '_APP_AUTOGRAVITY_HOST',
                 'description' => 'The host used by Appwrite to determine automatic image crop gravity.',
                 'introduction' => '2.0.0',
-                'default' => 'http://appwrite-autogravity:8080',
+                'default' => '',
                 'required' => false,
                 'overwrite' => true,
                 'question' => '',

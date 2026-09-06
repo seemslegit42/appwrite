@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\E2E\Services\Storage;
 
+use Appwrite\Extend\Exception;
 use CURLFile;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\E2E\Client;
@@ -93,6 +94,17 @@ final class StorageCustomServerTest extends Scope
         $path = '/storage/buckets/' . $bucketId . '/files/' . $file['body']['$id'] . '/preview';
 
         $preview = $this->client->call(Client::METHOD_GET, $path, $headers, $params);
+
+        if (System::getEnv('_APP_AUTOGRAVITY_HOST', '') === '') {
+            $this->assertEquals(400, $preview['headers']['status-code']);
+            $this->assertSame(Exception::GENERAL_ARGUMENT_INVALID, $preview['body']['type']);
+            $this->assertSame(
+                'Autogravity needs to be configured with _APP_AUTOGRAVITY_HOST to use automatic gravity',
+                $preview['body']['message']
+            );
+
+            return;
+        }
 
         $this->assertEquals(200, $preview['headers']['status-code']);
         $this->assertEquals('image/png', $preview['headers']['content-type']);
