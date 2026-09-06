@@ -126,11 +126,13 @@ final class StorageCustomServerTest extends Scope
         $this->assertNotSame($centerImage->getImageSignature(), $image->getImageSignature());
 
         $cached = [];
-        $this->assertEventually(function () use (&$cached, $path, $headers, $params, $preview): void {
+        $this->assertEventually(function () use (&$cached, $path, $headers, $params, $image): void {
             $cached = $this->client->call(Client::METHOD_GET, $path, $headers, $params);
 
             $this->assertSame('hit', $cached['headers']['x-appwrite-cache']);
-            $this->assertSame($preview['body'], $cached['body']);
+            $cachedImage = new \Imagick();
+            $cachedImage->readImageBlob($cached['body']);
+            $this->assertSame($image->getImageSignature(), $cachedImage->getImageSignature());
         });
 
         $this->assertEquals(200, $cached['headers']['status-code']);
