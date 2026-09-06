@@ -2,6 +2,7 @@
 
 namespace Appwrite\Platform\Modules\Storage\Http\Buckets\Files\Preview;
 
+use Appwrite\Autogravity\Detector as AutogravityDetector;
 use Appwrite\Extend\Exception;
 use Appwrite\OpenSSL\OpenSSL;
 use Appwrite\Platform\Action;
@@ -39,6 +40,10 @@ use Utopia\Validator\WhiteList;
 class Get extends Action
 {
     use HTTP;
+
+    private const AUTOGRAVITY_MAX_BYTES = 10 * 1024 * 1024;
+
+    private const GRAVITY_AUTO = 'auto';
 
     public static function getName()
     {
@@ -79,7 +84,7 @@ class Get extends Action
             ->param('fileId', '', new UID(), 'File ID')
             ->param('width', 0, new Range(0, 4000), 'Resize preview image width, Pass an integer between 0 to 4000.', true)
             ->param('height', 0, new Range(0, 4000), 'Resize preview image height, Pass an integer between 0 to 4000.', true)
-            ->param('gravity', Image::GRAVITY_CENTER, new WhiteList(Image::getGravityTypes()), 'Image crop gravity. Can be one of ' . implode(",", Image::getGravityTypes()), true, enum: new Enum(name: 'ImageGravity'))
+            ->param('gravity', Image::GRAVITY_CENTER, new WhiteList([self::GRAVITY_AUTO, ...Image::getGravityTypes()]), 'Image crop gravity. Can be one of ' . implode(",", [self::GRAVITY_AUTO, ...Image::getGravityTypes()]), true, enum: new Enum(name: 'ImageGravity'))
             ->param('quality', -1, new Range(-1, 100), 'Preview image quality. Pass an integer between 0 to 100. Defaults to keep existing image quality.', true)
             ->param('borderWidth', 0, new Range(0, 100), 'Preview image border in pixels. Pass an integer between 0 to 100. Defaults to 0.', true)
             ->param('borderColor', '', new HexColor(), 'Preview image border color. Use a valid HEX color, no # is needed for prefix.', true)
@@ -100,6 +105,7 @@ class Get extends Action
             ->inject('authorization')
             ->inject('user')
             ->inject('cacheControlForStorage')
+            ->inject('autogravity')
             ->callback($this->action(...));
     }
 
@@ -127,7 +133,8 @@ class Get extends Action
         Document $project,
         Authorization $authorization,
         User $user,
-        callable $cacheControlForStorage
+        callable $cacheControlForStorage,
+        AutogravityDetector $autogravity
     ) {
 
         if (!\extension_loaded('imagick')) {
@@ -264,6 +271,19 @@ class Get extends Action
             throw new Exception(Exception::STORAGE_FILE_TYPE_UNSUPPORTED, $e->getMessage());
         }
 
+        if (
+            $gravity === self::GRAVITY_AUTO
+            && $width > 0
+            && $height > 0
+            && isset($sourceWidth, $sourceHeight)
+            && \abs($width / $height - $sourceWidth / $sourceHeight) > 0.000001
+        ) {
+            $automaticGravity = $autogravity->get($source, $this->prepareForAutogravity($source, $type));
+            $gravity = $automaticGravity->getType($width, $height, $sourceWidth, $sourceHeight);
+        } elseif ($gravity === self::GRAVITY_AUTO) {
+            $gravity = Image::GRAVITY_CENTER;
+        }
+
         if ($width > 0 || $height > 0 || $gravity !== Image::GRAVITY_CENTER) {
             Span::add('storage.transform.crop.width', $width);
             Span::add('storage.transform.crop.height', $height);
@@ -350,5 +370,34 @@ class Get extends Action
             ->file($data);
 
         unset($image);
+    }
+
+    private function prepareForAutogravity(string $source, string $type): string
+    {
+        if (
+            \in_array($type, ['jpg', 'jpeg', 'png', 'webp'], true)
+            && \strlen($source) < self::AUTOGRAVITY_MAX_BYTES
+        ) {
+            return $source;
+        }
+
+        $image = new \Imagick();
+        $image->readImageBlob($source);
+        $image->setFirstIterator();
+        $orientation = $image->getImageProperties()['exif:Orientation'] ?? null;
+        $rotation = match ($orientation) {
+            '3' => 180,
+            '6' => 90,
+            '8' => -90,
+            default => 0,
+        };
+        if ($rotation !== 0) {
+            $image->rotateImage(new \ImagickPixel('transparent'), $rotation);
+        }
+        $image->resizeImage(320, 320, \Imagick::FILTER_LANCZOS, 1, false);
+        $image->setImageFormat('png');
+        $image->stripImage();
+
+        return $image->getImageBlob();
     }
 }
