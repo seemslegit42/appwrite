@@ -19,7 +19,7 @@ class Detector
         return $this->client !== null;
     }
 
-    public function get(string $source, ?string $analysis = null): Gravity
+    public function get(string $source): Gravity
     {
         if ($this->client === null) {
             throw new Exception('Autogravity needs to be configured with _APP_AUTOGRAVITY_HOST to use automatic gravity');
@@ -40,7 +40,7 @@ class Detector
             return new Gravity((float) $cached['x'], (float) $cached['y']);
         }
 
-        $gravity = $this->client->analyze($analysis ?? $source);
+        $gravity = $this->client->analyze($source);
         $this->cache->save($key, $gravity->getArrayCopy());
 
         return $gravity;

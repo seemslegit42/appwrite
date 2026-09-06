@@ -39,14 +39,14 @@ final class DetectorTest extends TestCase
 
         $this->assertTrue($detector->isEnabled());
 
-        $first = $detector->get('source-image', 'first-analysis-image');
-        $second = $detector->get('source-image', 'different-analysis-image');
+        $first = $detector->get('source-image');
+        $second = $detector->get('source-image');
 
         $this->assertSame(0.7, $first->x);
         $this->assertSame(0.4, $first->y);
         $this->assertSame($first->getArrayCopy(), $second->getArrayCopy());
         $this->assertSame(1, $http->requests);
-        $this->assertSame('first-analysis-image', $http->lastBody);
+        $this->assertSame('source-image', $http->lastBody);
     }
 
     public function testDifferentSourcesAreDetectedSeparately(): void

@@ -283,10 +283,9 @@ class Get extends Action
             && isset($sourceWidth, $sourceHeight)
             && \abs($width / $height - $sourceWidth / $sourceHeight) > 0.000001
         ) {
-            $prepared = $this->prepareForAutogravity($source, $type);
             $automaticGravity = $autogravity
-                ->get($source, $prepared['source'])
-                ->unrotate($prepared['rotation']);
+                ->get($source)
+                ->unrotate($this->getAutogravityRotation($source));
             $gravity = $automaticGravity->getType($width, $height, $sourceWidth, $sourceHeight);
         } elseif ($gravity === self::GRAVITY_AUTO) {
             $gravity = Image::GRAVITY_CENTER;
@@ -380,34 +379,17 @@ class Get extends Action
         unset($image);
     }
 
-    /**
-     * @return array{source: string, rotation: int}
-     */
-    private function prepareForAutogravity(string $source, string $type): array
+    private function getAutogravityRotation(string $source): int
     {
         $metadata = new \Imagick();
         $metadata->pingImageBlob($source);
         $orientation = $metadata->getImageProperties()['exif:Orientation'] ?? null;
-        $rotation = match ($orientation) {
+
+        return match ($orientation) {
             '3' => 180,
             '6' => 90,
             '8' => -90,
             default => 0,
         };
-
-        if (\in_array($type, ['jpg', 'jpeg', 'png', 'webp'], true)) {
-            return ['source' => $source, 'rotation' => $rotation];
-        }
-
-        $image = new \Imagick();
-        $image->readImageBlob($source);
-        $image->setFirstIterator();
-        if ($rotation !== 0) {
-            $image->rotateImage(new \ImagickPixel('transparent'), $rotation);
-        }
-        $image->setImageFormat('png');
-        $image->stripImage();
-
-        return ['source' => $image->getImageBlob(), 'rotation' => $rotation];
     }
 }
