@@ -44,8 +44,8 @@ final class ClientTest extends TestCase
 
         $gravity = $this->client($response)->analyze('image-bytes');
 
-        $this->assertSame(0.7, $gravity->x);
-        $this->assertSame(0.4, $gravity->y);
+        $this->assertEqualsWithDelta(0.7, $gravity->x, PHP_FLOAT_EPSILON);
+        $this->assertEqualsWithDelta(0.4, $gravity->y, PHP_FLOAT_EPSILON);
         $this->assertInstanceOf(RequestInterface::class, $this->request);
         $this->assertSame('POST', $this->request->getMethod());
         $this->assertSame('analyze', (string) $this->request->getUri());

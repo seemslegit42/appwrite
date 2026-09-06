@@ -42,8 +42,8 @@ final class DetectorTest extends TestCase
         $first = $detector->get('source-image');
         $second = $detector->get('source-image');
 
-        $this->assertSame(0.7, $first->x);
-        $this->assertSame(0.4, $first->y);
+        $this->assertEqualsWithDelta(0.7, $first->x, PHP_FLOAT_EPSILON);
+        $this->assertEqualsWithDelta(0.4, $first->y, PHP_FLOAT_EPSILON);
         $this->assertSame($first->getArrayCopy(), $second->getArrayCopy());
         $this->assertSame(1, $http->requests);
         $this->assertSame('source-image', $http->lastBody);

@@ -13,17 +13,15 @@ use Utopia\Image\Image;
 final class GravityTest extends TestCase
 {
     /**
-     * @return array<string, array{float, float, int, int, int, int, string}>
+     * @return \Iterator<string, array{float, float, int, int, int, int, string}>
      */
-    public static function typeProvider(): array
+    public static function typeProvider(): \Iterator
     {
-        return [
-            'landscape to portrait, subject right' => [0.7, 0.5, 180, 320, 1280, 720, Image::GRAVITY_RIGHT],
-            'landscape to portrait, subject left' => [0.2, 0.5, 180, 320, 1280, 720, Image::GRAVITY_LEFT],
-            'landscape to wide, subject remains visible' => [0.7, 0.5, 800, 600, 1280, 720, Image::GRAVITY_CENTER],
-            'portrait to landscape, subject top' => [0.5, 0.1, 600, 300, 600, 900, Image::GRAVITY_TOP],
-            'portrait to landscape, subject bottom' => [0.9, 0.9, 600, 300, 600, 900, Image::GRAVITY_BOTTOM],
-        ];
+        yield 'landscape to portrait, subject right' => [0.7, 0.5, 180, 320, 1280, 720, Image::GRAVITY_RIGHT];
+        yield 'landscape to portrait, subject left' => [0.2, 0.5, 180, 320, 1280, 720, Image::GRAVITY_LEFT];
+        yield 'landscape to wide, subject remains visible' => [0.7, 0.5, 800, 600, 1280, 720, Image::GRAVITY_CENTER];
+        yield 'portrait to landscape, subject top' => [0.5, 0.1, 600, 300, 600, 900, Image::GRAVITY_TOP];
+        yield 'portrait to landscape, subject bottom' => [0.9, 0.9, 600, 300, 600, 900, Image::GRAVITY_BOTTOM];
     }
 
     #[DataProvider('typeProvider')]
@@ -41,15 +39,13 @@ final class GravityTest extends TestCase
     }
 
     /**
-     * @return array<string, array{int, float, float}>
+     * @return \Iterator<string, array{int, float, float}>
      */
-    public static function rotationProvider(): array
+    public static function rotationProvider(): \Iterator
     {
-        return [
-            'clockwise' => [90, 0.8, 0.75],
-            'upside down' => [180, 0.75, 0.2],
-            'counterclockwise' => [-90, 0.2, 0.25],
-        ];
+        yield 'clockwise' => [90, 0.8, 0.75];
+        yield 'upside down' => [180, 0.75, 0.2];
+        yield 'counterclockwise' => [-90, 0.2, 0.25];
     }
 
     #[DataProvider('rotationProvider')]
