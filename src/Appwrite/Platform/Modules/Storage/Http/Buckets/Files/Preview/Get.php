@@ -385,24 +385,26 @@ class Get extends Action
      */
     private function prepareForAutogravity(string $source, string $type): array
     {
-        if (\in_array($type, ['jpg', 'jpeg', 'png', 'webp'], true)) {
-            return ['source' => $source, 'rotation' => 0];
-        }
-
-        $image = new \Imagick();
-        $image->readImageBlob($source);
-        $image->setFirstIterator();
-        $orientation = $image->getImageProperties()['exif:Orientation'] ?? null;
+        $metadata = new \Imagick();
+        $metadata->pingImageBlob($source);
+        $orientation = $metadata->getImageProperties()['exif:Orientation'] ?? null;
         $rotation = match ($orientation) {
             '3' => 180,
             '6' => 90,
             '8' => -90,
             default => 0,
         };
+
+        if (\in_array($type, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return ['source' => $source, 'rotation' => $rotation];
+        }
+
+        $image = new \Imagick();
+        $image->readImageBlob($source);
+        $image->setFirstIterator();
         if ($rotation !== 0) {
             $image->rotateImage(new \ImagickPixel('transparent'), $rotation);
         }
-        $image->resizeImage(320, 320, \Imagick::FILTER_LANCZOS, 1, false);
         $image->setImageFormat('png');
         $image->stripImage();
 

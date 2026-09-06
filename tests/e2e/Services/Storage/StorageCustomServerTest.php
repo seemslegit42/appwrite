@@ -118,8 +118,12 @@ final class StorageCustomServerTest extends Scope
 
         $right = $this->client->call(Client::METHOD_GET, $path, $headers, [...$params, 'gravity' => 'right']);
         $center = $this->client->call(Client::METHOD_GET, $path, $headers, [...$params, 'gravity' => 'center']);
-        $this->assertSame($right['body'], $preview['body']);
-        $this->assertNotSame($center['body'], $preview['body']);
+        $rightImage = new \Imagick();
+        $rightImage->readImageBlob($right['body']);
+        $centerImage = new \Imagick();
+        $centerImage->readImageBlob($center['body']);
+        $this->assertSame($rightImage->getImageSignature(), $image->getImageSignature());
+        $this->assertNotSame($centerImage->getImageSignature(), $image->getImageSignature());
 
         $cached = [];
         $this->assertEventually(function () use (&$cached, $path, $headers, $params, $preview): void {
