@@ -278,7 +278,10 @@ class Get extends Action
             && isset($sourceWidth, $sourceHeight)
             && \abs($width / $height - $sourceWidth / $sourceHeight) > 0.000001
         ) {
-            $automaticGravity = $autogravity->get($source, $this->prepareForAutogravity($source, $type));
+            $prepared = $this->prepareForAutogravity($source, $type);
+            $automaticGravity = $autogravity
+                ->get($source, $prepared['source'])
+                ->unrotate($prepared['rotation']);
             $gravity = $automaticGravity->getType($width, $height, $sourceWidth, $sourceHeight);
         } elseif ($gravity === self::GRAVITY_AUTO) {
             $gravity = Image::GRAVITY_CENTER;
@@ -372,13 +375,16 @@ class Get extends Action
         unset($image);
     }
 
-    private function prepareForAutogravity(string $source, string $type): string
+    /**
+     * @return array{source: string, rotation: int}
+     */
+    private function prepareForAutogravity(string $source, string $type): array
     {
         if (
             \in_array($type, ['jpg', 'jpeg', 'png', 'webp'], true)
             && \strlen($source) < self::AUTOGRAVITY_MAX_BYTES
         ) {
-            return $source;
+            return ['source' => $source, 'rotation' => 0];
         }
 
         $image = new \Imagick();
@@ -398,6 +404,6 @@ class Get extends Action
         $image->setImageFormat('png');
         $image->stripImage();
 
-        return $image->getImageBlob();
+        return ['source' => $image->getImageBlob(), 'rotation' => $rotation];
     }
 }

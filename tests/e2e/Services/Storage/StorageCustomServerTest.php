@@ -58,13 +58,25 @@ final class StorageCustomServerTest extends Scope
     public function testGetFilePreviewWithAutomaticGravity(): void
     {
         $bucketId = $this->setupBucket()['bucketId'];
+        $source = \tempnam(\sys_get_temp_dir(), 'appwrite-autogravity-');
+        if ($source === false) {
+            $this->fail('Failed to create a temporary image');
+        }
+        $subject = new \Imagick(__DIR__ . '/../../../resources/disk-a/kitten-1.jpg');
+        $subject->resizeImage(900, 0, \Imagick::FILTER_LANCZOS, 1);
+        $canvas = new \Imagick();
+        $canvas->newImage(2400, 1920, 'white', 'png');
+        $canvas->compositeImage($subject, \Imagick::COMPOSITE_OVER, 1450, 0);
+        $canvas->writeImage($source);
+
         $file = $this->client->call(Client::METHOD_POST, '/storage/buckets/' . $bucketId . '/files', array_merge([
             'content-type' => 'multipart/form-data',
             'x-appwrite-project' => $this->getProject()['$id'],
         ], $this->getHeaders()), [
             'fileId' => ID::unique(),
-            'file' => new CURLFile(realpath(__DIR__ . '/../../../resources/logo.png'), 'image/png', 'autogravity.png'),
+            'file' => new CURLFile($source, 'image/png', 'autogravity.png'),
         ]);
+        \unlink($source);
 
         $this->assertEquals(201, $file['headers']['status-code']);
 
@@ -91,6 +103,11 @@ final class StorageCustomServerTest extends Scope
         $image->readImageBlob($preview['body']);
         $this->assertSame(120, $image->getImageWidth());
         $this->assertSame(320, $image->getImageHeight());
+
+        $right = $this->client->call(Client::METHOD_GET, $path, $headers, [...$params, 'gravity' => 'right']);
+        $center = $this->client->call(Client::METHOD_GET, $path, $headers, [...$params, 'gravity' => 'center']);
+        $this->assertSame($right['body'], $preview['body']);
+        $this->assertNotSame($center['body'], $preview['body']);
 
         $cached = [];
         $this->assertEventually(function () use (&$cached, $path, $headers, $params, $preview): void {

@@ -51,6 +51,17 @@ class Gravity
         };
     }
 
+    public function unrotate(int $rotation): self
+    {
+        return match (($rotation % 360 + 360) % 360) {
+            0 => $this,
+            90 => new self($this->y, 1 - $this->x),
+            180 => new self(1 - $this->x, 1 - $this->y),
+            270 => new self(1 - $this->y, $this->x),
+            default => throw new Exception('Autogravity cannot reverse an unsupported rotation'),
+        };
+    }
+
     /**
      * @return array{x: float, y: float}
      */
