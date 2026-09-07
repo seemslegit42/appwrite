@@ -114,6 +114,31 @@ final class SignatureV4Test extends TestCase
         $this->assertSame('project-test', $key->getProjectId());
     }
 
+    public function testVerifiesSignatureWithOriginalAcceptEncodingPreservedByFastly(): void
+    {
+        $secret = 'test-api-key-secret';
+        $request = $this->signedRequest(
+            'GET',
+            '/v1/s3',
+            '',
+            $secret,
+            additionalHeaders: ['accept-encoding' => 'identity'],
+        );
+        $request->headerMap['accept-encoding'] = '';
+        $request->headerMap['fastly-orig-accept-encoding'] = 'identity';
+
+        $key = (new SignatureV4())->verify(
+            $request,
+            $this->project($secret, ['buckets.read']),
+            new Document(),
+            new User(),
+            ['buckets.read']
+        );
+
+        $this->assertSame('project-test', $key->getProjectId());
+        $this->assertContains('buckets.read', $key->getScopes());
+    }
+
     public function testRejectsValidSignatureWhenApiKeyMissingRequiredScope(): void
     {
         $secret = 'test-api-key-secret';
@@ -305,6 +330,11 @@ final class TestRequest extends Request
     public function getHeaderLine(string $key, string $default = ''): string
     {
         return $this->headerMap[\strtolower($key)] ?? $default;
+    }
+
+    public function hasHeader(string $key): bool
+    {
+        return \array_key_exists(\strtolower($key), $this->headerMap);
     }
 
     public function getRawPayload(): string

@@ -261,7 +261,15 @@ class SignatureV4
             if ($header === '') {
                 continue;
             }
-            $headers[$header] = \preg_replace('/\s+/', ' ', \trim($request->getHeaderLine($header)));
+
+            $value = $request->getHeaderLine($header);
+            if ($header === 'accept-encoding' && $request->hasHeader('fastly-orig-accept-encoding')) {
+                // Fastly normalizes Accept-Encoding before forwarding the request, but
+                // preserves the value that the S3 client signed in this header.
+                $value = $request->getHeaderLine('fastly-orig-accept-encoding');
+            }
+
+            $headers[$header] = \preg_replace('/\s+/', ' ', \trim($value));
         }
         \ksort($headers);
 
