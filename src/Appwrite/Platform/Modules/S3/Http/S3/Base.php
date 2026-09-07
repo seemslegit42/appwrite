@@ -856,13 +856,14 @@ abstract class Base extends Action
      */
     protected function completedParts(string $body): array
     {
-        if (!\preg_match_all('/<Part>\s*<PartNumber>\s*(\d+)\s*<\/PartNumber>\s*<ETag>\s*&quot;?([^<"]+)&quot;?\s*<\/ETag>\s*<\/Part>/i', $body, $matches, PREG_SET_ORDER)) {
+        if (!\preg_match_all('/<Part>\s*<PartNumber>\s*(\d+)\s*<\/PartNumber>\s*<ETag>\s*([^<]+)\s*<\/ETag>\s*<\/Part>/i', $body, $matches, PREG_SET_ORDER)) {
             return [];
         }
 
         $parts = [];
         foreach ($matches as $match) {
-            $parts[(int) $match[1]] = \trim($match[2], " \t\n\r\0\x0B\"");
+            $etag = \html_entity_decode($match[2], ENT_QUOTES | ENT_XML1, 'UTF-8');
+            $parts[(int) $match[1]] = \trim($etag, " \t\n\r\0\x0B\"");
         }
 
         return $parts;
