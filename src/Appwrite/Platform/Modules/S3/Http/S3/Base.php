@@ -724,7 +724,7 @@ abstract class Base extends Action
 
         $sse = $request->getHeaderLine('x-amz-server-side-encryption');
         if ($sse !== '') {
-            throw new AppwriteException(AppwriteException::GENERAL_ARGUMENT_INVALID, 'S3 server-side encryption headers are not supported.');
+            $metadata['serverSideEncryption'] = $sse;
         }
 
         foreach ([

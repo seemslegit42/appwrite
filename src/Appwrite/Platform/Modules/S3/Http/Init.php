@@ -58,7 +58,9 @@ class Init extends Action
             'x-amz-server-side-encryption',
         ])));
         foreach ($corsHeaders as $name => $value) {
-            $response->addHeader($name, $value);
+            $response
+                ->removeHeader($name)
+                ->addHeader($name, $value);
         }
 
         // The S3 actions set the event name and params themselves; project and
