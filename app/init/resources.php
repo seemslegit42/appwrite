@@ -108,7 +108,7 @@ $container->set('autogravity', function (Cache $cache) {
     $host = System::getEnv('_APP_AUTOGRAVITY_HOST', '');
     $client = $host === ''
         ? null
-        : (new Client((new SwooleClientAdapter())->withConnectionReuse()))
+        : (new Client(new SwooleClientAdapter()))
             ->withBaseUri($host)
             ->withTimeout(30);
 
