@@ -276,6 +276,7 @@ class Get extends Action
             );
         }
 
+        $focalPoint = null;
         if (
             $gravity === self::GRAVITY_AUTO
             && $width > 0
@@ -283,10 +284,10 @@ class Get extends Action
             && isset($sourceWidth, $sourceHeight)
             && \abs($width / $height - $sourceWidth / $sourceHeight) > 0.000001
         ) {
-            $automaticGravity = $autogravity
+            $focalPoint = $autogravity
                 ->get($source)
                 ->unrotate($this->getAutogravityRotation($source));
-            $gravity = $automaticGravity->getType($width, $height, $sourceWidth, $sourceHeight);
+            $gravity = Image::GRAVITY_CENTER;
         } elseif ($gravity === self::GRAVITY_AUTO) {
             $gravity = Image::GRAVITY_CENTER;
         }
@@ -295,7 +296,7 @@ class Get extends Action
             Span::add('storage.transform.crop.width', $width);
             Span::add('storage.transform.crop.height', $height);
             Span::add('storage.transform.crop.gravity', $gravity);
-            $image->crop($width, $height, $gravity);
+            $image->crop($width, $height, $gravity, x: $focalPoint?->x, y: $focalPoint?->y);
         }
 
         if ($opacity !== 1.0) {
