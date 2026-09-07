@@ -43,12 +43,11 @@ use Utopia\Database\Validator\Authorization;
 use Utopia\DI\Container;
 use Utopia\DSN\DSN;
 use Utopia\Lock\Distributed;
-use Utopia\Logger\Logger;
 use Utopia\Pools\Adapter\Swoole as SwoolePoolAdapter;
 use Utopia\Pools\Group;
 use Utopia\Pools\Pool as Connections;
 use Utopia\Queue\Broker\Pool as BrokerPool;
-use Utopia\Queue\Publisher;
+use Utopia\Queue\Publisher\Synchronous as Publisher;
 use Utopia\Queue\Queue;
 use Utopia\Storage\Device;
 use Utopia\Storage\Device\AWS;
@@ -69,8 +68,6 @@ global $container;
 $container = new Container();
 
 $container->set('register', fn () => $register);
-
-$container->set('logger', fn ($register) => $register->get('logger'), ['register']);
 
 $container->set('hooks', fn ($register) => $register->get('hooks'), ['register']);
 
@@ -182,7 +179,7 @@ $container->set('usageConnection', function () {
     );
 }, []);
 
-$container->set('executionStore', function (?Logger $logger) {
+$container->set('executionStore', function () {
     $client = new HttpClientPool(new Connections(
         new SwoolePoolAdapter(),
         'executions',
@@ -208,9 +205,8 @@ $container->set('executionStore', function (?Logger $logger) {
         dsn: $connection,
         client: $client,
         retention: (int) System::getEnv('_APP_MAINTENANCE_RETENTION_EXECUTION', 1209600),
-        logger: $logger,
     );
-}, ['logger']);
+}, []);
 
 $container->set('publisherForBuilds', fn (Publisher $publisher) => new BuildPublisher(
     $publisher,
@@ -310,7 +306,13 @@ $container->set('redis', function () {
 });
 
 $container->set('locks', fn (Group $pools) => fn (string $key, int $ttl, callable $callback, float $timeout = 0.0): mixed => $pools->get('lock')->use(
-    fn (\Redis $redis) => (new Distributed($redis, $key, ttl: $ttl))->withLock($callback, timeout: $timeout)
+    function (\Redis $redis) use ($key, $ttl, $callback, $timeout): mixed {
+        // The callback receives the lock so long-running holders can refresh
+        // the lease and verify it is still theirs before committing work.
+        $lock = new Distributed($redis, $key, ttl: $ttl);
+
+        return $lock->withLock(fn () => $callback($lock), timeout: $timeout);
+    }
 ), ['pools']);
 
 $container->set('timelimit', fn (\Redis $redis) => fn (string $key, int $limit, int $time) => new TimeLimitRedis($key, $limit, $time, $redis), ['redis']);
