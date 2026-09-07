@@ -21,11 +21,11 @@ final class ActivateRulesTest extends TestCase
         $this->activate($dbForPlatform, deploymentBranch: 'main');
 
         $branchQuery = $this->queryFor($captured, 'deploymentVcsProviderBranch');
-        $this->assertNotNull($branchQuery);
+        $this->assertInstanceOf(\Utopia\Database\Query::class, $branchQuery);
         $this->assertSame(['', 'main'], $branchQuery->getValues());
 
         $resourceType = $this->queryFor($captured, 'deploymentResourceType');
-        $this->assertNotNull($resourceType);
+        $this->assertInstanceOf(\Utopia\Database\Query::class, $resourceType);
         $this->assertSame(['function'], $resourceType->getValues());
     }
 
@@ -37,7 +37,7 @@ final class ActivateRulesTest extends TestCase
         $this->activate($dbForPlatform, deploymentBranch: '');
 
         $branchQuery = $this->queryFor($captured, 'deploymentVcsProviderBranch');
-        $this->assertNotNull($branchQuery);
+        $this->assertInstanceOf(\Utopia\Database\Query::class, $branchQuery);
         $this->assertSame([''], $branchQuery->getValues());
     }
 
@@ -61,10 +61,8 @@ final class ActivateRulesTest extends TestCase
         );
 
         $bus = $this->createStub(Bus::class);
-        $bus->method('dispatch')->willReturnCallback(function () use (&$dispatched) {
+        $bus->method('dispatch')->willReturnCallback(function () use (&$dispatched): void {
             $dispatched++;
-
-            return;
         });
 
         $this->activate($dbForPlatform, deploymentBranch: 'main', bus: $bus);
