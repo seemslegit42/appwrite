@@ -106,6 +106,8 @@ class SignatureV4
                 continue;
             }
 
+            $this->verifyPayload($request, $presigned);
+
             $apiKey = Key::decode($project, $team, $user, $secret);
             if ($apiKey->getRole() !== User::ROLE_KEYS || $apiKey->isExpired()) {
                 throw new Exception(Exception::USER_UNAUTHORIZED, 'Invalid or expired API key.');
@@ -119,6 +121,22 @@ class SignatureV4
         }
 
         throw new Exception(Exception::USER_UNAUTHORIZED, 'Signature does not match.');
+    }
+
+    private function verifyPayload(Request $request, bool $presigned): void
+    {
+        if ($presigned) {
+            return;
+        }
+
+        $expected = \strtolower($request->getHeaderLine('x-amz-content-sha256'));
+        if ($expected === '' || $expected === 'unsigned-payload' || \str_starts_with($expected, 'streaming-')) {
+            return;
+        }
+
+        if (\preg_match('/^[a-f0-9]{64}$/D', $expected) !== 1 || !\hash_equals($expected, \hash('sha256', $request->getRawPayload()))) {
+            throw new Exception(Exception::USER_UNAUTHORIZED, 'Payload hash does not match x-amz-content-sha256.');
+        }
     }
 
     private function validatePresignedDate(string $date, string $credentialDate, string $expires): void

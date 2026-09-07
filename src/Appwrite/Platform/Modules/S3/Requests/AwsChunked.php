@@ -13,10 +13,9 @@ use Appwrite\Extend\Exception as AppwriteException;
  * zero-size chunk and optional trailing headers. Storing the raw payload
  * would persist the framing bytes as object content.
  *
- * Per-chunk signatures are stripped without verification — the request is
- * already authenticated by the seed signature over the canonical request,
- * which pins the STREAMING-* payload mode. Integrity is checked through the
- * declared decoded length and, when present, the CRC32 trailer checksum.
+ * Signed streaming modes are rejected by the gateway until their chained
+ * per-chunk signatures can be verified. Unsigned streaming payloads are
+ * checked through the declared decoded length and CRC32 trailer checksum.
  */
 class AwsChunked
 {

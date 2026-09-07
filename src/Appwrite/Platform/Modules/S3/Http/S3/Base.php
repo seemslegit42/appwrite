@@ -137,6 +137,9 @@ abstract class Base extends Action
         if ($bucket->isEmpty() || !$bucket->getAttribute('enabled', true)) {
             throw new AppwriteException(AppwriteException::STORAGE_BUCKET_NOT_FOUND);
         }
+        if ($bucket->getAttribute('encryption', true) || $bucket->getAttribute('compression', 'none') !== 'none') {
+            throw new AppwriteException(AppwriteException::GENERAL_ARGUMENT_INVALID, 'S3 access requires a bucket with encryption and compression disabled.');
+        }
         return $bucket;
     }
 
@@ -298,7 +301,12 @@ abstract class Base extends Action
     protected function requestBody(Request $request): string
     {
         $payload = $request->getRawPayload();
-        if (!AwsChunked::applies($request->getHeaderLine('x-amz-content-sha256'), $request->getHeaderLine('content-encoding'))) {
+        $contentSha256 = \strtoupper(\trim($request->getHeaderLine('x-amz-content-sha256')));
+        if (\str_starts_with($contentSha256, 'STREAMING-AWS4-HMAC-SHA256-')) {
+            throw new AppwriteException(AppwriteException::GENERAL_ARGUMENT_INVALID, 'Signed aws-chunked payloads are not supported.');
+        }
+
+        if (!AwsChunked::applies($contentSha256, $request->getHeaderLine('content-encoding'))) {
             return $payload;
         }
 
@@ -575,7 +583,10 @@ abstract class Base extends Action
         $folder = $object['folder'];
         $name = $object['name'];
         $this->validateFileConstraints($bucket, $name, \strlen($body));
-        $path = $existing?->getAttribute('path', '') ?: $this->path($deviceForFiles, $bucket, $fileId, $name);
+        $previousPath = $existing?->getAttribute('path', '') ?? '';
+        $path = $existing === null
+            ? $this->path($deviceForFiles, $bucket, $fileId, $name)
+            : $this->path($deviceForFiles, $bucket, ID::unique(), $name);
         $contentType = $this->contentType($name, $contentType, $body);
         $etag = \md5($body);
 
@@ -583,11 +594,7 @@ abstract class Base extends Action
             throw new AppwriteException(AppwriteException::GENERAL_SERVER_ERROR, 'Failed to save object.');
         }
 
-        $document = new Document([
-            '$id' => ID::custom($fileId),
-            '$permissions' => [],
-            'bucketId' => $bucket->getId(),
-            'bucketInternalId' => $bucket->getSequence(),
+        $attributes = [
             'name' => $name,
             'folder' => $folder,
             'path' => $path,
@@ -595,38 +602,45 @@ abstract class Base extends Action
             'mimeType' => $contentType,
             'sizeOriginal' => \strlen($body),
             'sizeActual' => $deviceForFiles->getFileSize($path),
-            'algorithm' => 'none',
-            'comment' => '',
-            'chunksTotal' => 1,
-            'chunksUploaded' => 1,
             'search' => \implode(' ', [$fileId, $folder, $name]),
             'metadata' => $metadata,
-        ]);
+        ];
 
         try {
-            return $dbForProject->getAuthorization()->skip(fn () => $dbForProject->createDocument('bucket_' . $bucket->getSequence(), $document));
-        } catch (DuplicateException) {
-            return $dbForProject->getAuthorization()->skip(fn () => $dbForProject->updateDocument('bucket_' . $bucket->getSequence(), $fileId, new Document([
-                'name' => $name,
-                'folder' => $folder,
-                'path' => $path,
-                'signature' => $etag,
-                'mimeType' => $contentType,
-                'sizeOriginal' => \strlen($body),
-                'sizeActual' => $deviceForFiles->getFileSize($path),
-                'search' => \implode(' ', [$fileId, $folder, $name]),
-                'metadata' => $metadata,
-            ])));
-        } catch (\Throwable $error) {
-            // The bytes were just written for a brand-new object; drop them so a
-            // failed DB write does not leave an unreachable file in storage.
-            if ($existing === null) {
-                $deviceForFiles->delete($path);
+            if ($existing !== null) {
+                $file = $dbForProject->getAuthorization()->skip(fn () => $dbForProject->updateDocument(
+                    'bucket_' . $bucket->getSequence(),
+                    $fileId,
+                    new Document($attributes)
+                ));
+            } else {
+                $file = $dbForProject->getAuthorization()->skip(fn () => $dbForProject->createDocument('bucket_' . $bucket->getSequence(), new Document([
+                    '$id' => ID::custom($fileId),
+                    '$permissions' => [],
+                    'bucketId' => $bucket->getId(),
+                    'bucketInternalId' => $bucket->getSequence(),
+                    ...$attributes,
+                    'algorithm' => 'none',
+                    'comment' => '',
+                    'chunksTotal' => 1,
+                    'chunksUploaded' => 1,
+                ])));
             }
+        } catch (\Throwable $error) {
+            $deviceForFiles->delete($path);
             throw $error;
         }
-    }
 
+        if ($previousPath !== '' && $previousPath !== $path) {
+            try {
+                $deviceForFiles->delete($previousPath);
+            } catch (\Throwable) {
+                // The replacement is committed; stale-path cleanup is best effort.
+            }
+        }
+
+        return $file;
+    }
     /**
      * @return array{0: Document, 1: string}
      */
@@ -710,7 +724,7 @@ abstract class Base extends Action
 
         $sse = $request->getHeaderLine('x-amz-server-side-encryption');
         if ($sse !== '') {
-            $metadata['serverSideEncryption'] = $sse;
+            throw new AppwriteException(AppwriteException::GENERAL_ARGUMENT_INVALID, 'S3 server-side encryption headers are not supported.');
         }
 
         foreach ([
@@ -838,15 +852,20 @@ abstract class Base extends Action
     }
 
     /**
-     * @return array<int>
+     * @return array<int, string>
      */
-    protected function completedPartNumbers(string $body): array
+    protected function completedParts(string $body): array
     {
-        if (!\preg_match_all('/<PartNumber>\s*(\d+)\s*<\/PartNumber>/', $body, $matches)) {
+        if (!\preg_match_all('/<Part>\s*<PartNumber>\s*(\d+)\s*<\/PartNumber>\s*<ETag>\s*&quot;?([^<"]+)&quot;?\s*<\/ETag>\s*<\/Part>/i', $body, $matches, PREG_SET_ORDER)) {
             return [];
         }
 
-        return \array_map('intval', $matches[1]);
+        $parts = [];
+        foreach ($matches as $match) {
+            $parts[(int) $match[1]] = \trim($match[2], " \t\n\r\0\x0B\"");
+        }
+
+        return $parts;
     }
 
     /**
@@ -860,8 +879,7 @@ abstract class Base extends Action
             $partsByNumber[$part['partNumber']] = $part;
         }
 
-        $selected = $selected ?: \array_keys($partsByNumber);
-        \sort($selected);
+        \ksort($selected);
         if ($selected === []) {
             throw new AppwriteException(AppwriteException::GENERAL_ARGUMENT_INVALID, 'Multipart upload has no parts.');
         }
@@ -869,9 +887,12 @@ abstract class Base extends Action
         $size = 0;
         $etagBytes = '';
         $expected = 1;
-        foreach ($selected as $partNumber) {
+        foreach ($selected as $partNumber => $submittedEtag) {
             if ($partNumber !== $expected || !isset($partsByNumber[$partNumber])) {
                 throw new AppwriteException(AppwriteException::GENERAL_ARGUMENT_INVALID, 'Multipart parts must be contiguous and start at part 1.');
+            }
+            if (!\hash_equals($partsByNumber[$partNumber]['etag'], $submittedEtag)) {
+                throw new AppwriteException(AppwriteException::GENERAL_ARGUMENT_INVALID, "Multipart ETag does not match part {$partNumber}.");
             }
             $etagBytes .= \hex2bin($partsByNumber[$partNumber]['etag']) ?: '';
             $size += $partsByNumber[$partNumber]['size'];

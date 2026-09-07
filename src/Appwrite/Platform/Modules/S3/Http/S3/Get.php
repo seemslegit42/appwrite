@@ -48,7 +48,11 @@ class Get extends Base
         }
 
         if ($key === '') {
-            $this->authorize($request, $project, $team, $user, ['files.read', 'buckets.read']);
+            $bucketOperation = $isHead
+                || $this->hasQuery($request, 'acl')
+                || $this->hasQuery($request, 'location')
+                || $this->unsupportedSubresource($request);
+            $this->authorize($request, $project, $team, $user, [$bucketOperation ? 'buckets.read' : 'files.read']);
             $bucket = $this->bucket($dbForProject, $bucketId);
 
             if ($isHead) {
@@ -141,7 +145,9 @@ class Get extends Base
                 }
 
                 try {
-                    $body = (string) $deviceForFiles->read($path);
+                    $body = $range === null
+                        ? (string) $deviceForFiles->read($path)
+                        : (string) $deviceForFiles->read($path, $range[0], $range[1] - $range[0] + 1);
                     break;
                 } catch (\Throwable $error) {
                     $latest = $this->getObject($dbForProject, $bucket, $key);
@@ -257,11 +263,6 @@ class Get extends Base
         if ($isHead) {
             $response->send('');
             return;
-        }
-
-        if ($range !== null) {
-            [$start, $end] = $range;
-            $body = \substr((string) $body, $start, $end - $start + 1);
         }
 
         $response->send((string) $body);

@@ -121,11 +121,17 @@ class Create extends Base
                 $sourceBucket = $this->bucket($dbForProject, $sourceBucketId);
                 $sourceFile = $this->getObject($dbForProject, $sourceBucket, $sourceKey);
                 $this->validateCopySize($bucket, $sourceFile);
-                $body = (string) $deviceForFiles->read($sourceFile->getAttribute('path', ''));
                 if (\preg_match('/^bytes=(\d+)-(\d+)$/', $request->getHeaderLine('x-amz-copy-source-range'), $matches) === 1) {
                     $start = (int) $matches[1];
                     $end = (int) $matches[2];
-                    $body = \substr($body, $start, $end - $start + 1);
+                    $sourceSize = (int) $sourceFile->getAttribute('sizeOriginal', 0);
+                    if ($start > $end || $start >= $sourceSize) {
+                        throw new AppwriteException(AppwriteException::STORAGE_INVALID_RANGE);
+                    }
+                    $end = \min($end, $sourceSize - 1);
+                    $body = (string) $deviceForFiles->read($sourceFile->getAttribute('path', ''), $start, $end - $start + 1);
+                } else {
+                    $body = (string) $deviceForFiles->read($sourceFile->getAttribute('path', ''));
                 }
             }
 
@@ -157,7 +163,7 @@ class Create extends Base
             // acknowledged parts. Nesting the multipart lock around the object
             // lock inside completeMultipartUpload would also need two
             // connections from the fail-fast lock pool at once.
-            $selected = $this->completedPartNumbers($this->requestBody($request));
+            $selected = $this->completedParts($this->requestBody($request));
             $upload = $this->multipartUploadForBucket($cache, $project, $this->query($request, 'uploadId'), $bucketId, $key);
             [$file, $event] = $this->completeMultipartUpload($locks, $dbForProject, $cache, $project, $deviceForFiles, $bucket, $upload, $selected);
             if ($event !== null) {

@@ -174,6 +174,24 @@ final class SignatureV4Test extends TestCase
         );
     }
 
+    public function testRejectsPayloadThatDoesNotMatchSignedHash(): void
+    {
+        $secret = 'test-api-key-secret';
+        $request = $this->signedRequest('PUT', '/v1/s3/bucket/object.txt', 'original', $secret);
+        $request->body = 'tampered';
+
+        $this->expectException(AppwriteException::class);
+        $this->expectExceptionMessage('Payload hash does not match');
+
+        (new SignatureV4())->verify(
+            $request,
+            $this->project($secret, ['files.write']),
+            new Document(),
+            new User(),
+            ['files.write']
+        );
+    }
+
     public function testRejectsExpiredSignatureTimestamp(): void
     {
         $secret = 'test-api-key-secret';
@@ -312,7 +330,7 @@ final class TestRequest extends Request
         private readonly string $method,
         public readonly string $uri,
         public array $headerMap,
-        private readonly string $body,
+        public string $body,
         public readonly string $query = '',
     ) {
     }
