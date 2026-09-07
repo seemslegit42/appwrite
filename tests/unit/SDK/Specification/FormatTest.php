@@ -1274,10 +1274,6 @@ final class FormatTest extends TestCase
         $this->assertNotContains('transactionId', $methods['createDocuments']);
     }
 
-    /**
-     * @param list<Parameter> $createDocument
-     * @param list<Parameter> $createDocuments
-     */
     public function testCanonicalDocumentKeysExampleAuthByPlatform(): void
     {
         Method::$processed = [];
@@ -1386,6 +1382,10 @@ final class FormatTest extends TestCase
         ];
     }
 
+    /**
+     * @param list<Parameter> $createDocument
+     * @param list<Parameter> $createDocuments
+     */
     private function createDocumentsRoute(array $createDocument, array $createDocuments): Route
     {
         return (new Route('POST', '/v1/documentsdb/:databaseId/collections/:collectionId/documents'))
