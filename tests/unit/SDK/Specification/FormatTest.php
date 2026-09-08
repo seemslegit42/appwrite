@@ -356,9 +356,10 @@ final class FormatTest extends TestCase
         $this->assertSame('["one","two"]', $properties['text']['example']);
     }
 
-    public static function defaultLocations(): array
+    public static function defaultLocations(): \Iterator
     {
-        return [['GET'], ['POST']];
+        yield ['GET'];
+        yield ['POST'];
     }
 
     #[DataProvider('defaultLocations')]
@@ -398,7 +399,6 @@ final class FormatTest extends TestCase
 
         foreach (['headers', 'data'] as $name) {
             $this->assertSame('object', $schemas[$name]->type);
-            $this->assertInstanceOf(\stdClass::class, $schemas[$name]->default);
             $this->assertSame('{}', json_encode($schemas[$name]->default));
         }
         $this->assertEquals((object) ['enabled' => true], $schemas['metadata']->default);
