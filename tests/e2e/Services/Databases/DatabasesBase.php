@@ -1553,6 +1553,70 @@ trait DatabasesBase
         $this->assertEquals($attribute['body']['elements'], ['goalkeeper', 'defender', 'midfielder', 'forward', 'coach']);
     }
 
+    public function testUpdateAttributeRejectsMismatchedType(): void
+    {
+        if (!$this->getSupportForAttributes()) {
+            $this->markTestSkipped('Attributes are not supported by this database adapter');
+        }
+
+        $database = $this->client->call(Client::METHOD_POST, $this->getApiBasePath(), [
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+            'x-appwrite-key' => $this->getProject()['apiKey']
+        ], [
+            'databaseId' => ID::unique(),
+            'name' => 'Mismatched Type Database'
+        ]);
+
+        $databaseId = $database['body']['$id'];
+
+        $container = $this->client->call(Client::METHOD_POST, $this->getContainerUrl($databaseId), array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+            'x-appwrite-key' => $this->getProject()['apiKey']
+        ]), [
+            $this->getContainerIdParam() => ID::unique(),
+            'name' => 'MismatchedType',
+            'permissions' => [
+                Permission::create(Role::any()),
+                Permission::read(Role::any()),
+                Permission::update(Role::any()),
+                Permission::delete(Role::any()),
+            ],
+        ]);
+
+        $containerId = $container['body']['$id'];
+
+        $created = $this->client->call(Client::METHOD_POST, $this->getSchemaUrl($databaseId, $containerId) . '/string', array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+            'x-appwrite-key' => $this->getProject()['apiKey'],
+        ]), [
+            'key' => 'label',
+            'size' => 256,
+            'required' => false,
+        ]);
+
+        $this->assertEquals(202, $created['headers']['status-code']);
+
+        $this->waitForAttribute($databaseId, $containerId, 'label');
+
+        /**
+         * Test for FAILURE
+         */
+        $response = $this->client->call(Client::METHOD_PATCH, $this->getSchemaUrl($databaseId, $containerId) . '/boolean/label', array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+            'x-appwrite-key' => $this->getProject()['apiKey'],
+        ]), [
+            'required' => false,
+            'default' => false,
+        ]);
+
+        $this->assertEquals(400, $response['headers']['status-code']);
+        $this->assertEquals($this->getSchemaParam() . '_type_invalid', $response['body']['type']);
+    }
+
     public function testAttributeResponseModels(): void
     {
         if (!$this->getSupportForAttributes()) {
