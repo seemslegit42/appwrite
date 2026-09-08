@@ -319,17 +319,8 @@ class Create extends Action
             return;
         }
 
-        $chunksUploaded = $deviceForSites->upload(
-            $deviceForLocal->read($fileTmpName),
-            $path,
-            $metadata['content_type'] ?? '',
-            $chunk,
-            $chunks,
-            $metadata
-        );
-
         try {
-            $locks($lockKey, 600, function () use ($activate, $authorization, $bus, $commands, &$chunks, $chunksUploaded, $dbForPlatform, $dbForProject, $deploymentId, $deployments, $deviceForSites, $fileSize, &$metadata, $mergeUploadMetadata, $outputDirectory, $path, $platform, $project, $queueForEvents, $response, &$site, $type): void {
+            $locks($lockKey, 600, function () use ($activate, $authorization, $bus, $commands, $chunk, &$chunks, $dbForPlatform, $dbForProject, $deploymentId, $deployments, $deviceForLocal, $deviceForSites, $fileSize, $fileTmpName, &$metadata, $mergeUploadMetadata, $outputDirectory, $path, $platform, $project, $queueForEvents, $response, &$site, $type): void {
                 $deployment = $dbForProject->getDocument('deployments', $deploymentId);
                 $uploaded = 0;
 
@@ -355,8 +346,17 @@ class Create extends Action
                     }
                 }
 
-                // Another chunk request may have finalized the upload and removed
-                // its temporary parts before this request counted them.
+                // Keep chunk writes and assembly under the same lock so another
+                // request cannot count or assemble a partially written chunk.
+                $chunksUploaded = $deviceForSites->upload(
+                    $deviceForLocal->read($fileTmpName),
+                    $path,
+                    $metadata['content_type'] ?? '',
+                    $chunk,
+                    $chunks,
+                    $metadata
+                );
+
                 if (empty($chunksUploaded)) {
                     throw new Exception(Exception::GENERAL_SERVER_ERROR, 'Failed moving file');
                 }
