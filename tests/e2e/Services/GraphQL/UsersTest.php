@@ -149,6 +149,37 @@ final class UsersTest extends Scope
         $this->assertGreaterThan(0, \count($users['body']['data']['usersList']));
     }
 
+    public function testListUsersPreservesNestedTargets(): void
+    {
+        $user = $this->setupUser();
+        $projectId = $this->getProject()['$id'];
+
+        $query = $this->getQuery(self::GET_USERS_WITH_TARGETS);
+        $graphQLPayload = [
+            'query' => $query,
+            'variables' => [
+                'queries' => [
+                    Query::equal('$id', [$user['_id']])->toString(),
+                ],
+            ]
+        ];
+
+        $users = $this->client->call(Client::METHOD_POST, '/graphql', \array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $projectId,
+        ], $this->getHeaders()), $graphQLPayload);
+
+        $this->assertArrayNotHasKey('errors', $users['body']);
+
+        // A target object sits deeper than _APP_GRAPHQL_MAX_DEPTH reaches. Key
+        // escaping has to stop there, but the values must survive rather than
+        // be replaced with null.
+        $targets = $users['body']['data']['usersList']['users'][0]['targets'];
+
+        $this->assertIsArray($targets[0]);
+        $this->assertEquals('email', $targets[0]['providerType']);
+    }
+
     public function testGetUser()
     {
         $projectId = $this->getProject()['$id'];
