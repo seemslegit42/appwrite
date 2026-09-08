@@ -328,10 +328,6 @@ class Create extends Action
             $metadata
         );
 
-        if (empty($chunksUploaded)) {
-            throw new Exception(Exception::GENERAL_SERVER_ERROR, 'Failed moving file');
-        }
-
         try {
             $locks($lockKey, 600, function () use ($activate, $authorization, $bus, $commands, &$chunks, $chunksUploaded, $dbForPlatform, $dbForProject, $deploymentId, $deployments, $deviceForSites, $fileSize, &$metadata, $mergeUploadMetadata, $outputDirectory, $path, $platform, $project, $queueForEvents, $response, &$site, $type): void {
                 $deployment = $dbForProject->getDocument('deployments', $deploymentId);
@@ -357,6 +353,12 @@ class Create extends Action
                             ->dynamic($deployment, Response::MODEL_DEPLOYMENT);
                         return;
                     }
+                }
+
+                // Another chunk request may have finalized the upload and removed
+                // its temporary parts before this request counted them.
+                if (empty($chunksUploaded)) {
+                    throw new Exception(Exception::GENERAL_SERVER_ERROR, 'Failed moving file');
                 }
 
                 $chunksUploaded = max($uploaded, $chunksUploaded, (int) ($metadata['chunks'] ?? 0));
