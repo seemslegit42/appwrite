@@ -771,17 +771,8 @@ trait TemplatesBase
             message: 'Body',
         )['headers']['status-code']);
 
-        $before = [];
-        $this->assertEventually(function () use ($firstSubject, &$before) {
-            $before = $this->listEmailTemplates();
-            $this->assertSame(200, $before['headers']['status-code']);
-            $matches = \array_values(\array_filter(
-                $before['body']['templates'],
-                fn ($template) => $template['templateId'] === 'mfaChallenge' && $template['locale'] === 'en',
-            ));
-            $this->assertCount(1, $matches);
-            $this->assertSame($firstSubject, $matches[0]['subject']);
-        });
+        $before = $this->listEmailTemplates();
+        $this->assertSame(200, $before['headers']['status-code']);
         $beforeTotal = $before['body']['total'];
 
         $this->assertSame(200, $this->updateEmailTemplate(
@@ -791,20 +782,18 @@ trait TemplatesBase
             message: 'Body',
         )['headers']['status-code']);
 
-        $this->assertEventually(function () use ($beforeTotal, $secondSubject) {
-            $after = $this->listEmailTemplates();
-            $this->assertSame(200, $after['headers']['status-code']);
+        $after = $this->listEmailTemplates();
+        $this->assertSame(200, $after['headers']['status-code']);
 
-            // Same templateId/locale must remain a single entry, not accumulate.
-            $this->assertSame($beforeTotal, $after['body']['total']);
+        // Same templateId/locale must remain a single entry, not accumulate.
+        $this->assertSame($beforeTotal, $after['body']['total']);
 
-            $matches = \array_values(\array_filter(
-                $after['body']['templates'],
-                fn ($t) => $t['templateId'] === 'mfaChallenge' && $t['locale'] === 'en',
-            ));
-            $this->assertCount(1, $matches);
-            $this->assertSame($secondSubject, $matches[0]['subject']);
-        });
+        $matches = \array_values(\array_filter(
+            $after['body']['templates'],
+            fn ($t) => $t['templateId'] === 'mfaChallenge' && $t['locale'] === 'en',
+        ));
+        $this->assertCount(1, $matches);
+        $this->assertSame($secondSubject, $matches[0]['subject']);
     }
 
     public function testListEmailTemplatesTotalFalse(): void
