@@ -196,6 +196,32 @@ final class EventTest extends TestCase
         ], $events);
     }
 
+    public function testGenerateEventsOrder(): void
+    {
+        // The first event is the concrete event that happened, in full. Consumers that
+        // report a single name take it from there -- the functions worker publishes it
+        // as `x-appwrite-event` and `APPWRITE_FUNCTION_EVENT`.
+        $this->assertSame([
+            'users.torsten.update.name',
+            'users.*.update.name',
+            'users.torsten.update',
+            'users.*.update',
+            'users.torsten',
+            'users.*',
+        ], Event::generateEvents('users.[userId].update.name', [
+            'userId' => 'torsten'
+        ]));
+
+        $membershipEvents = Event::generateEvents('teams.[teamId].memberships.[membershipId].update.status', [
+            'teamId' => 'jets',
+            'membershipId' => 'torsten',
+        ]);
+        $this->assertSame('teams.jets.memberships.torsten.update.status', $membershipEvents[0]);
+
+        // An attribute of a sub-resource does not also belong to its parent.
+        $this->assertNotContains('teams.jets.update.status', $membershipEvents);
+    }
+
     public function testGenerateMirrorEvents(): void
     {
         $legacyDatabase = new Document(['type' => 'legacy']);
