@@ -149,12 +149,10 @@ final class UsageCustomServerTest extends Scope
         $this->assertSame('general_unauthorized_scope', $response['body']['type']);
     }
 
-    public static function databaseApis(): array
+    public static function databaseApis(): \Iterator
     {
-        return [
-            'documents' => ['databases', 'collections', 'documents', 'attributes', 'collectionId', 'documentId'],
-            'rows' => ['tablesdb', 'tables', 'rows', 'columns', 'tableId', 'rowId'],
-        ];
+        yield 'documents' => ['databases', 'collections', 'documents', 'attributes', 'collectionId', 'documentId'];
+        yield 'rows' => ['tablesdb', 'tables', 'rows', 'columns', 'tableId', 'rowId'];
     }
 
     #[DataProvider('databaseApis')]
