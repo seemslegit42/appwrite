@@ -1615,6 +1615,57 @@ trait DatabasesBase
 
         $this->assertEquals(400, $response['headers']['status-code']);
         $this->assertEquals($this->getSchemaParam() . '_type_invalid', $response['body']['type']);
+
+        $email = $this->client->call(Client::METHOD_POST, $this->getSchemaUrl($databaseId, $containerId) . '/email', array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+            'x-appwrite-key' => $this->getProject()['apiKey'],
+        ]), [
+            'key' => 'contact',
+            'required' => false,
+        ]);
+
+        $this->assertEquals(202, $email['headers']['status-code']);
+
+        $this->waitForAttribute($databaseId, $containerId, 'contact');
+
+        // Both are strings, so only the persisted format separates them.
+        $response = $this->client->call(Client::METHOD_PATCH, $this->getSchemaUrl($databaseId, $containerId) . '/string/contact', array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+            'x-appwrite-key' => $this->getProject()['apiKey'],
+        ]), [
+            'required' => false,
+            'default' => 'plain',
+        ]);
+
+        $this->assertEquals(400, $response['headers']['status-code']);
+        $this->assertEquals($this->getSchemaParam() . '_type_invalid', $response['body']['type']);
+
+        /**
+         * Test for SUCCESS
+         */
+        $response = $this->client->call(Client::METHOD_PATCH, $this->getSchemaUrl($databaseId, $containerId) . '/email/contact', array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+            'x-appwrite-key' => $this->getProject()['apiKey'],
+        ]), [
+            'required' => false,
+            'default' => 'someone@example.com',
+        ]);
+
+        $this->assertEquals(200, $response['headers']['status-code']);
+
+        $response = $this->client->call(Client::METHOD_PATCH, $this->getSchemaUrl($databaseId, $containerId) . '/string/label', array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+            'x-appwrite-key' => $this->getProject()['apiKey'],
+        ]), [
+            'required' => false,
+            'default' => 'plain',
+        ]);
+
+        $this->assertEquals(200, $response['headers']['status-code']);
     }
 
     public function testAttributeResponseModels(): void
