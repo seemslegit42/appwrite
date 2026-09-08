@@ -137,6 +137,13 @@ final class VCSGiteaConsoleClientTest extends Scope
         ], username: self::GITEA_USERNAME_SECOND);
         $this->assertEquals(202, $fork['headers']['status-code'], \json_encode($fork['body']));
 
+        $forkPath = '/api/v1/repos/' . self::GITEA_USERNAME_SECOND . '/' . $repositoryName;
+        $this->assertEventually(function () use ($forkPath) {
+            $branch = $this->giteaApiHelper(Client::METHOD_GET, $forkPath . '/branches/main', username: self::GITEA_USERNAME_SECOND);
+            $this->assertEquals(200, $branch['headers']['status-code'], \json_encode($branch['body']));
+            $this->assertNotEmpty($branch['body']['commit']['id']);
+        }, 30000, 1000);
+
         $function = $this->client->call(Client::METHOD_POST, '/functions', $headers, [
             'functionId' => ID::unique(),
             'name' => 'Gitea pull requests',
@@ -151,7 +158,7 @@ final class VCSGiteaConsoleClientTest extends Scope
         $pullRequestIds = [];
         $authorizePath = '';
         foreach (['first', 'second'] as $branch) {
-            $file = $this->giteaApiHelper(Client::METHOD_POST, '/api/v1/repos/' . self::GITEA_USERNAME_SECOND . '/' . $repositoryName . '/contents/index.js', [
+            $file = $this->giteaApiHelper(Client::METHOD_POST, $forkPath . '/contents/index.js', [
                 'branch' => 'main',
                 'new_branch' => $branch,
                 'content' => \base64_encode("module.exports = async (context) => context.res.send('{$branch}');\n"),
