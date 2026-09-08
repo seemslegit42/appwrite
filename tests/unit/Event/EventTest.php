@@ -160,6 +160,42 @@ final class EventTest extends TestCase
         }
     }
 
+    public function testWildcardDeduplicationPreservesDeliveryOrder(): void
+    {
+        $events = Event::generateEvents(
+            'databases.[databaseId].collections.[collectionId].documents.[documentId].create',
+            ['databaseId' => 'db', 'collectionId' => 'col', 'documentId' => 'doc'],
+            new Document(['type' => 'documentsdb']),
+        );
+
+        // Realtime derives its target from events[0]. Keep the concrete event
+        // first and preserve the wildcard and parent event delivery order.
+        $this->assertSame([
+            'documentsdb.db.collections.col.documents.doc.create',
+            'documentsdb.*.collections.*.documents.*.create',
+            'documentsdb.db.collections.*.documents.doc.create',
+            'documentsdb.*.collections.*.documents.doc.create',
+            'documentsdb.*.collections.col.documents.doc.create',
+            'documentsdb.db.collections.col.documents.*.create',
+            'documentsdb.*.collections.col.documents.*.create',
+            'documentsdb.db.collections.*.documents.*.create',
+            'documentsdb.db.collections.col.documents.doc',
+            'documentsdb.*.collections.*.documents.*',
+            'documentsdb.db.collections.*.documents.doc',
+            'documentsdb.*.collections.*.documents.doc',
+            'documentsdb.*.collections.col.documents.doc',
+            'documentsdb.db.collections.col.documents.*',
+            'documentsdb.*.collections.col.documents.*',
+            'documentsdb.db.collections.*.documents.*',
+            'documentsdb.db.collections.col',
+            'documentsdb.*.collections.*',
+            'documentsdb.db.collections.*',
+            'documentsdb.*.collections.col',
+            'documentsdb.db',
+            'documentsdb.*',
+        ], $events);
+    }
+
     public function testGenerateMirrorEvents(): void
     {
         $legacyDatabase = new Document(['type' => 'legacy']);
