@@ -1967,6 +1967,54 @@ final class FunctionsCustomServerTest extends Scope
         $this->assertEquals(404, $deployment['headers']['status-code']);
     }
 
+    public function testDeleteExecutionRequiresOwnership(): void
+    {
+        $data = $this->setupTestDeployment();
+
+        $execution = $this->createExecution($data['functionId'], ['async' => 'false']);
+
+        $this->assertEquals(201, $execution['headers']['status-code']);
+        $executionId = $execution['body']['$id'];
+        $this->assertNotEmpty($executionId);
+
+        $otherFunctionId = $this->setupFunction([
+            'functionId' => ID::unique(),
+            'name' => 'Other function',
+            'runtime' => 'node-22',
+            'entrypoint' => 'index.js',
+            'execute' => [Role::any()->toString()],
+        ]);
+
+        /**
+         * Test for FAILURE
+         */
+        $response = $this->client->call(Client::METHOD_DELETE, '/functions/' . $otherFunctionId . '/executions/' . $executionId, array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+        ], $this->getHeaders()));
+
+        $this->assertEquals(404, $response['headers']['status-code']);
+        $this->assertEquals('execution_not_found', $response['body']['type']);
+
+        // A rejected call must not have deleted anything, which is what
+        // distinguishes an ownership rejection from an incidental 404.
+        $response = $this->getExecution($data['functionId'], $executionId);
+
+        $this->assertEquals(200, $response['headers']['status-code']);
+
+        /**
+         * Test for SUCCESS
+         */
+        $response = $this->client->call(Client::METHOD_DELETE, '/functions/' . $data['functionId'] . '/executions/' . $executionId, array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+        ], $this->getHeaders()));
+
+        $this->assertEquals(204, $response['headers']['status-code']);
+
+        $this->cleanupFunction($otherFunctionId);
+    }
+
     public function testCreateExecution(): void
     {
         $data = $this->setupTestDeployment();
