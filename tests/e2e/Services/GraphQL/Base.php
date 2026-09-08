@@ -173,7 +173,6 @@ trait Base
     public const string CREATE_USER = 'create_user';
     public const string GET_USER = 'get_user';
     public const string GET_USERS = 'list_user';
-    public const string GET_USERS_WITH_TARGETS = 'list_user_with_targets';
     public const string GET_USER_PREFERENCES = 'get_user_preferences';
     public const string GET_USER_SESSIONS = 'get_user_sessions';
     public const string GET_USER_MEMBERSHIPS = 'get_user_memberships';
@@ -1506,15 +1505,6 @@ trait Base
                             status
                             email
                             emailVerification
-                        }
-                    }   
-                }';
-            case self::GET_USERS_WITH_TARGETS:
-                return 'query listUsers($queries: [String!]) {
-                    usersList(queries: $queries) {
-                        total
-                        users {
-                            _id
                             targets {
                                 providerType
                                 identifier

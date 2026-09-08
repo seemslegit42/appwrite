@@ -126,12 +126,14 @@ final class UsersTest extends Scope
 
     public function testGetUsers()
     {
+        $user = $this->setupUser();
         $projectId = $this->getProject()['$id'];
         $query = $this->getQuery(self::GET_USERS);
         $graphQLPayload = [
             'query' => $query,
             'variables' => [
                 'queries' => [
+                    Query::equal('$id', [$user['_id']])->toString(),
                     Query::limit(100)->toString(),
                     Query::offset(0)->toString(),
                 ],
@@ -143,58 +145,18 @@ final class UsersTest extends Scope
             'x-appwrite-project' => $projectId,
         ], $this->getHeaders()), $graphQLPayload);
 
+        $this->assertEquals(200, $users['headers']['status-code']);
         $this->assertIsArray($users['body']['data']);
         $this->assertArrayNotHasKey('errors', $users['body']);
         $this->assertIsArray($users['body']['data']['usersList']);
-        $this->assertGreaterThan(0, \count($users['body']['data']['usersList']));
-    }
+        $this->assertCount(1, $users['body']['data']['usersList']['users']);
+        $this->assertEquals($user['_id'], $users['body']['data']['usersList']['users'][0]['_id']);
 
-    public function testListUsersPreservesNestedTargets(): void
-    {
-        $projectId = $this->getProject()['$id'];
-
-        // Own user rather than the cached one, so the assertion below does not
-        // depend on which other tests have already added targets to it.
-        $created = $this->client->call(Client::METHOD_POST, '/graphql', \array_merge([
-            'content-type' => 'application/json',
-            'x-appwrite-project' => $projectId,
-        ], $this->getHeaders()), [
-            'query' => $this->getQuery(self::CREATE_USER),
-            'variables' => [
-                'userId' => ID::unique(),
-                'email' => \uniqid() . '@appwrite.io',
-                'password' => 'password',
-                'name' => 'Nested Targets User',
-            ]
-        ]);
-
-        $this->assertArrayNotHasKey('errors', $created['body']);
-        $user = $created['body']['data']['usersCreate'];
-
-        $query = $this->getQuery(self::GET_USERS_WITH_TARGETS);
-        $graphQLPayload = [
-            'query' => $query,
-            'variables' => [
-                'queries' => [
-                    Query::equal('$id', [$user['_id']])->toString(),
-                ],
-            ]
-        ];
-
-        $users = $this->client->call(Client::METHOD_POST, '/graphql', \array_merge([
-            'content-type' => 'application/json',
-            'x-appwrite-project' => $projectId,
-        ], $this->getHeaders()), $graphQLPayload);
-
-        $this->assertArrayNotHasKey('errors', $users['body']);
-
-        // A target object sits deeper than _APP_GRAPHQL_MAX_DEPTH reaches. Key
-        // escaping has to stop there, but the values must survive rather than
-        // be replaced with null.
-        $targets = $users['body']['data']['usersList']['users'][0]['targets'];
-
-        $this->assertIsArray($targets[0]);
-        $this->assertEquals('email', $targets[0]['providerType']);
+        // Nested target values must survive beyond the key-escaping depth limit.
+        $this->assertContains([
+            'providerType' => 'email',
+            'identifier' => $user['email'],
+        ], $users['body']['data']['usersList']['users'][0]['targets']);
     }
 
     public function testGetUser()
