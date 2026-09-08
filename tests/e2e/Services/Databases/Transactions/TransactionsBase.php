@@ -1846,9 +1846,12 @@ trait TransactionsBase
         // The commit handler builds this payload by hand rather than going through
         // processDocument(), so it has to add the same keys: the synthetic $databaseId,
         // and only the container id belonging to the surface that was called.
-        $delivery = $this->getLastRequest(function (array $request) use ($recordId) {
-            $this->assertStringContainsString($recordId, $request['headers']['X-Appwrite-Webhook-Events'] ?? '');
-        });
+        $delivery = $this->getLastRequestForProject(
+            $this->getProject()['$id'],
+            probe: function (array $request) use ($recordId) {
+                $this->assertStringContainsString($recordId, $request['headers']['X-Appwrite-Webhook-Events'] ?? '');
+            }
+        );
 
         $this->assertEquals($databaseId, $delivery['data']['$databaseId']);
         $this->assertEquals($collectionId, $delivery['data'][$this->getContainerIdResponseKey()]);
