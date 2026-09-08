@@ -473,9 +473,12 @@ class Update extends Action
                 $webhooksEvents = $eventProcessor->getWebhooksEvents($project);
 
                 foreach ($documentsToTrigger as $doc) {
+                    // Match the key set processDocument() gives every other row and document
+                    // event: the synthetic $databaseId, plus whichever of $tableId or
+                    // $collectionId belongs to the surface that was called.
                     $payload = $doc->getArrayCopy();
-                    $payload['$tableId'] = $collection->getId();
-                    $payload['$collectionId'] = $collection->getId();
+                    $payload['$databaseId'] = $database->getId();
+                    $payload['$' . $groupId] = $collection->getId();
 
                     $queueForEvents
                         ->setParam('documentId', $doc->getId())
