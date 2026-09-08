@@ -151,8 +151,25 @@ final class UsersTest extends Scope
 
     public function testListUsersPreservesNestedTargets(): void
     {
-        $user = $this->setupUser();
         $projectId = $this->getProject()['$id'];
+
+        // Own user rather than the cached one, so the assertion below does not
+        // depend on which other tests have already added targets to it.
+        $created = $this->client->call(Client::METHOD_POST, '/graphql', \array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $projectId,
+        ], $this->getHeaders()), [
+            'query' => $this->getQuery(self::CREATE_USER),
+            'variables' => [
+                'userId' => ID::unique(),
+                'email' => \uniqid() . '@appwrite.io',
+                'password' => 'password',
+                'name' => 'Nested Targets User',
+            ]
+        ]);
+
+        $this->assertArrayNotHasKey('errors', $created['body']);
+        $user = $created['body']['data']['usersCreate'];
 
         $query = $this->getQuery(self::GET_USERS_WITH_TARGETS);
         $graphQLPayload = [
