@@ -1969,23 +1969,26 @@ final class FunctionsCustomServerTest extends Scope
 
     public function testDeleteExecutionRequiresOwnership(): void
     {
-        $data = $this->setupTestDeployment();
-
-        $execution = $this->createExecution($data['functionId'], ['async' => 'false']);
-
-        $this->assertEquals(201, $execution['headers']['status-code']);
-        $executionId = $execution['body']['$id'];
-        $this->assertNotEmpty($executionId);
-
-        $otherFunctionId = $this->setupFunction([
-            'functionId' => ID::unique(),
-            'name' => 'Other function',
-            'runtime' => 'node-22',
-            'entrypoint' => 'index.js',
-            'execute' => [Role::any()->toString()],
-        ]);
+        $functionId = '';
+        $otherFunctionId = '';
 
         try {
+            $functionId = $this->setupDeployedFunction('Execution ownership');
+
+            $execution = $this->createExecution($functionId, ['async' => 'false']);
+
+            $this->assertEquals(201, $execution['headers']['status-code']);
+            $executionId = $execution['body']['$id'];
+            $this->assertNotEmpty($executionId);
+
+            $otherFunctionId = $this->setupFunction([
+                'functionId' => ID::unique(),
+                'name' => 'Execution ownership other',
+                'runtime' => 'node-22',
+                'entrypoint' => 'index.js',
+                'execute' => [Role::any()->toString()],
+            ]);
+
             /**
              * Test for FAILURE
              */
@@ -1999,21 +2002,26 @@ final class FunctionsCustomServerTest extends Scope
 
             // A rejected call must not have deleted anything, which is what
             // distinguishes an ownership rejection from an incidental 404.
-            $response = $this->getExecution($data['functionId'], $executionId);
+            $response = $this->getExecution($functionId, $executionId);
 
             $this->assertEquals(200, $response['headers']['status-code']);
 
             /**
              * Test for SUCCESS
              */
-            $response = $this->client->call(Client::METHOD_DELETE, '/functions/' . $data['functionId'] . '/executions/' . $executionId, array_merge([
+            $response = $this->client->call(Client::METHOD_DELETE, '/functions/' . $functionId . '/executions/' . $executionId, array_merge([
                 'content-type' => 'application/json',
                 'x-appwrite-project' => $this->getProject()['$id'],
             ], $this->getHeaders()));
 
             $this->assertEquals(204, $response['headers']['status-code']);
         } finally {
-            $this->cleanupFunction($otherFunctionId);
+            if ($otherFunctionId !== '') {
+                $this->cleanupFunction($otherFunctionId);
+            }
+            if ($functionId !== '') {
+                $this->cleanupFunction($functionId);
+            }
         }
     }
 
