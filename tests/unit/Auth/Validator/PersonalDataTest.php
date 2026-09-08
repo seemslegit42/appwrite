@@ -81,15 +81,25 @@ final class PersonalDataTest extends TestCase
         $this->assertFalse($this->object->isValid('something.EMAIL.something'));
     }
 
-    public function testRepeatedCallsAreConsistent(): void
+    public function testNotStrictLeavesPersonalDataUntouched(): void
     {
-        $this->object = new PersonalData('userId', 'email@example.com', 'name', '+129492323', false);
+        $validator = new PersonalDataProbe('userId', 'email@example.com', 'Name', '+129492323', false);
 
-        for ($i = 0; $i < 3; $i++) {
-            $this->assertFalse($this->object->isValid('USERID'));
-            $this->assertFalse($this->object->isValid('EMAIL@EXAMPLE.COM'));
-            $this->assertFalse($this->object->isValid('NAME'));
-            $this->assertTrue($this->object->isValid('893pu5egerfsv3rgersvd'));
-        }
+        // Long enough to clear the password rules, so validation reaches the
+        // personal-data comparisons that used to lowercase the fields in place.
+        $this->assertFalse($validator->isValid('something.USERID.something'));
+
+        $this->assertSame(['userId', 'email@example.com', 'Name', '+129492323'], $validator->personalData());
+    }
+}
+
+final class PersonalDataProbe extends PersonalData
+{
+    /**
+     * @return array<int, string|null>
+     */
+    public function personalData(): array
+    {
+        return [$this->userId, $this->email, $this->name, $this->phone];
     }
 }
