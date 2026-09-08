@@ -3010,4 +3010,63 @@ trait UsersBase
         ]);
         $this->assertEquals(404, $response['headers']['status-code']);
     }
+
+    public function testListMFAFactorsRecoveryCode(): void
+    {
+        $projectId = $this->getProject()['$id'];
+        $headers = array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $projectId,
+        ], $this->getHeaders());
+
+        $user = $this->client->call(Client::METHOD_POST, '/users', $headers, [
+            'userId' => ID::unique(),
+            'email' => \uniqid() . '@appwrite.io',
+            'password' => 'password',
+            'name' => 'MFA Recovery Code User',
+        ]);
+
+        $this->assertEquals(201, $user['headers']['status-code']);
+        $userId = $user['body']['$id'];
+
+        $session = $this->client->call(Client::METHOD_POST, '/users/' . $userId . '/sessions', $headers);
+
+        $this->assertEquals(201, $session['headers']['status-code']);
+        $sessionHeaders = [
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $projectId,
+            'x-appwrite-session' => $session['body']['secret'],
+        ];
+
+        /**
+         * Test for SUCCESS: both endpoints report no recovery codes before any are generated
+         */
+        $factors = $this->client->call(Client::METHOD_GET, '/users/' . $userId . '/mfa/factors', $headers);
+
+        $this->assertEquals(200, $factors['headers']['status-code']);
+        $this->assertFalse($factors['body']['recoveryCode']);
+
+        $accountFactors = $this->client->call(Client::METHOD_GET, '/account/mfa/factors', $sessionHeaders);
+
+        $this->assertEquals(200, $accountFactors['headers']['status-code']);
+        $this->assertFalse($accountFactors['body']['recoveryCode']);
+
+        $recoveryCodes = $this->client->call(Client::METHOD_PATCH, '/users/' . $userId . '/mfa/recovery-codes', $headers);
+
+        $this->assertEquals(201, $recoveryCodes['headers']['status-code']);
+        $this->assertNotEmpty($recoveryCodes['body']['recoveryCodes']);
+
+        /**
+         * Test for SUCCESS: both endpoints agree once recovery codes exist
+         */
+        $factors = $this->client->call(Client::METHOD_GET, '/users/' . $userId . '/mfa/factors', $headers);
+
+        $this->assertEquals(200, $factors['headers']['status-code']);
+        $this->assertTrue($factors['body']['recoveryCode']);
+
+        $accountFactors = $this->client->call(Client::METHOD_GET, '/account/mfa/factors', $sessionHeaders);
+
+        $this->assertEquals(200, $accountFactors['headers']['status-code']);
+        $this->assertTrue($accountFactors['body']['recoveryCode']);
+    }
 }
