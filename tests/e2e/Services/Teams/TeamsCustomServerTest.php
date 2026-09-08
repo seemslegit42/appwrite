@@ -42,11 +42,12 @@ final class TeamsCustomServerTest extends Scope
                 'roles' => ['editor'],
             ]);
             $this->assertEquals(201, $membership['headers']['status-code']);
+            $userId = $membership['body']['userId'];
+
             $this->assertEquals($email, $membership['body']['userEmail']);
             $this->assertEquals($email, $membership['body']['userName']);
             $this->assertTrue($membership['body']['confirm']);
 
-            $userId = $membership['body']['userId'];
             $membershipId = $membership['body']['$id'];
             $stored = $this->client->call(Client::METHOD_GET, '/teams/' . $teamId . '/memberships/' . $membershipId, $headers);
             $this->assertEquals(200, $stored['headers']['status-code']);
