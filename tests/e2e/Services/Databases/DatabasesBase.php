@@ -2712,6 +2712,47 @@ trait DatabasesBase
         $this->assertEquals(400, $response['headers']['status-code']);
     }
 
+    public function testCreateDocumentWithCommasInStringArray(): void
+    {
+        $data = $this->setupAttributes();
+        $databaseId = $data['databaseId'];
+        $recordId = ID::unique();
+
+        $created = $this->client->call(Client::METHOD_POST, $this->getRecordUrl($databaseId, $data['moviesId']), array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+        ], $this->getHeaders()), [
+            $this->getRecordIdParam() => $recordId,
+            'data' => [
+                'title' => 'Commas In Array',
+                'releaseYear' => 2024,
+                'birthDay' => null,
+                'actors' => [
+                    'potato,carrot',
+                    'apple,orange',
+                ],
+            ],
+            'permissions' => [
+                Permission::read(Role::user($this->getUser()['$id'])),
+                Permission::update(Role::user($this->getUser()['$id'])),
+                Permission::delete(Role::user($this->getUser()['$id'])),
+            ]
+        ]);
+
+        $this->assertEquals(201, $created['headers']['status-code']);
+        $this->assertSame(['potato,carrot', 'apple,orange'], $created['body']['actors']);
+
+        // The read path is the load-bearing half: it is the only one that goes
+        // through the adapter round trip and decodes the stored array.
+        $fetched = $this->client->call(Client::METHOD_GET, $this->getRecordUrl($databaseId, $data['moviesId'], $recordId), array_merge([
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+        ], $this->getHeaders()));
+
+        $this->assertEquals(200, $fetched['headers']['status-code']);
+        $this->assertSame(['potato,carrot', 'apple,orange'], $fetched['body']['actors']);
+    }
+
     public function testCreateDocument(): void
     {
         $data = $this->setupIndexes();
