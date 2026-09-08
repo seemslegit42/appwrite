@@ -80,4 +80,16 @@ final class PersonalDataTest extends TestCase
         $this->assertFalse($this->object->isValid('EMAIL.something'));
         $this->assertFalse($this->object->isValid('something.EMAIL.something'));
     }
+
+    public function testRepeatedCallsAreConsistent(): void
+    {
+        $this->object = new PersonalData('userId', 'email@example.com', 'name', '+129492323', false);
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->assertFalse($this->object->isValid('USERID'));
+            $this->assertFalse($this->object->isValid('EMAIL@EXAMPLE.COM'));
+            $this->assertFalse($this->object->isValid('NAME'));
+            $this->assertTrue($this->object->isValid('893pu5egerfsv3rgersvd'));
+        }
+    }
 }
