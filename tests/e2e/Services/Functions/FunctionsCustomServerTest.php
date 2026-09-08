@@ -3496,6 +3496,13 @@ final class FunctionsCustomServerTest extends Scope
             $executionId = $execution['body']['$id'];
             $this->assertNotEmpty($executionId);
 
+            $this->assertEventually(function () use ($functionId, $executionId) {
+                $execution = $this->getExecution($functionId, $executionId);
+
+                $this->assertEquals(200, $execution['headers']['status-code']);
+                $this->assertEquals('completed', $execution['body']['status']);
+            }, 60000, 500);
+
             $otherFunctionId = $this->setupFunction([
                 'functionId' => ID::unique(),
                 'name' => 'Execution ownership other',
