@@ -35,12 +35,12 @@ class Update extends Base
 
     public static function getClientIdName(): string
     {
-        return 'REST API Key (also known as Client ID)';
+        return 'REST API key';
     }
 
     public static function getClientIdExample(): string
     {
-        return '2b8e0f000000000000000000000c4a17';
+        return '839ff5000000000000000000013206de';
     }
 
     public static function getClientSecretName(): string
@@ -50,7 +50,7 @@ class Update extends Base
 
     public static function getClientSecretExample(): string
     {
-        return 'dK7Yp2000000000000000000000RqXwV';
+        return 'jLNVOK00000000000000000000yJebea';
     }
 
     public static function getClientSecretHint(): string

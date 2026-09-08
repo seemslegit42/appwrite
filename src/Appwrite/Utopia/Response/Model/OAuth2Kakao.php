@@ -31,7 +31,7 @@ class OAuth2Kakao extends OAuth2Base
      */
     public function getClientIdExample(): string
     {
-        return '2b8e0f000000000000000000000c4a17';
+        return '839ff5000000000000000000013206de';
     }
 
     /**
@@ -39,7 +39,7 @@ class OAuth2Kakao extends OAuth2Base
      */
     public function getClientSecretExample(): string
     {
-        return 'dK7Yp2000000000000000000000RqXwV';
+        return 'jLNVOK00000000000000000000yJebea';
     }
 
     /**

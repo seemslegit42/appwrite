@@ -35,21 +35,21 @@ class Update extends Base
 
     public static function getClientIdName(): string
     {
-        return 'Client Key';
+        return 'Client key';
     }
 
     public static function getClientIdExample(): string
     {
-        return 'aw6vzq00000000ki';
+        return 'awz000000000tyw0';
     }
 
     public static function getClientSecretName(): string
     {
-        return 'Client Secret';
+        return 'Client secret';
     }
 
     public static function getClientSecretExample(): string
     {
-        return '2f4b17a0000000000000000000000000000d9c5e';
+        return '6wXewM00000000000000000000yXnite';
     }
 }
