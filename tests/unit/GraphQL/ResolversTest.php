@@ -60,17 +60,15 @@ final class ResolversTest extends TestCase
         $this->assertSame($expected, $actual);
     }
 
-    public static function payloads(): array
+    public static function payloads(): \Iterator
     {
-        return [
-            'nested data beyond the escaping limit' => [
-                ['users' => [['targets' => [['providerType' => 'email']]]]],
-                ['users' => [['targets' => [['providerType' => 'email']]]]],
-            ],
-            'array-valued system keys' => [
-                ['$permissions' => ['read("any")'], '$nested' => ['$id' => 'child']],
-                ['_permissions' => ['read("any")'], '_nested' => ['_id' => 'child']],
-            ],
+        yield 'nested data beyond the escaping limit' => [
+            ['users' => [['targets' => [['providerType' => 'email']]]]],
+            ['users' => [['targets' => [['providerType' => 'email']]]]],
+        ];
+        yield 'array-valued system keys' => [
+            ['$permissions' => ['read("any")'], '$nested' => ['$id' => 'child']],
+            ['_permissions' => ['read("any")'], '_nested' => ['_id' => 'child']],
         ];
     }
 }
