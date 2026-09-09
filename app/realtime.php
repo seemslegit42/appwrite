@@ -1397,6 +1397,7 @@ $server->onClose(function (int $connection) use ($realtime, $stats, $register, $
                     Span::init('realtime.close.presenceCleanup');
                     Span::add('realtime.projectId', $projectId);
                     Span::add('realtime.presenceCount', \count($presencesById));
+                    Span::add('user.id', $userId ?? null);
 
                     try {
                         $dbForPlatform = getConsoleDB();
@@ -1445,7 +1446,9 @@ $server->onClose(function (int $connection) use ($realtime, $stats, $register, $
                             Span::current()?->setError($th);
                             logError($th, 'realtimeOnClosePresenceDeletion', tags: [
                                 'projectId' => $projectId,
-                                'presences' => \count($presenceIds)
+                                'userId' => $userId ?? 'n/a',
+                                'presences' => \count($presenceIds),
+                                'presenceIds' => \implode(',', $presenceIds),
                             ]);
                         }
 
