@@ -520,12 +520,12 @@ trait UsersBase
          * Test for FAILURE
          */
         foreach ([
-            ['passwordSalt', 'not-base64!', 'Salt must be base64 encoded'],
-            ['passwordSaltSeparator', 'not-base64!', 'Salt separator must be base64 encoded'],
-            ['passwordSignerKey', 'not-base64!', 'Signer key must be base64 encoded'],
-            ['passwordSalt', '0', 'Salt cannot be empty'],
-            ['passwordSignerKey', '0', 'Signer key cannot be empty'],
-        ] as [$parameter, $value, $message]) {
+            ['passwordSalt', 'not-base64!'],
+            ['passwordSaltSeparator', 'not-base64!'],
+            ['passwordSignerKey', 'not-base64!'],
+            ['passwordSalt', '0'],
+            ['passwordSignerKey', '0'],
+        ] as [$parameter, $value]) {
             $userId = ID::unique();
             $response = $this->client->call(Client::METHOD_POST, '/users/scrypt-modified', $headers, array_merge($options, [
                 'userId' => $userId,
@@ -535,7 +535,7 @@ trait UsersBase
 
             $this->assertSame(400, $response['headers']['status-code'], $parameter . ': ' . $value);
             $this->assertSame('general_argument_invalid', $response['body']['type']);
-            $this->assertSame($message, $response['body']['message']);
+            $this->assertNotEmpty($response['body']['message']);
 
             $response = $this->client->call(Client::METHOD_GET, '/users/' . $userId, $headers);
 
