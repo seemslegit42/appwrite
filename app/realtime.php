@@ -1446,7 +1446,7 @@ $server->onClose(function (int $connection) use ($realtime, $stats, $register, $
                             Span::current()?->setError($th);
                             logError($th, 'realtimeOnClosePresenceDeletion', tags: [
                                 'projectId' => $projectId,
-                                'userId' => $userId ?? 'n/a',
+                                'userId' => $userId ?? '',
                                 'presences' => \count($presenceIds),
                                 // Bounded sample; total is carried by `presences` above so the
                                 // tag cannot blow past telemetry length limits on a busy connection.
