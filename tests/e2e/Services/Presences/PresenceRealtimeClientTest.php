@@ -654,6 +654,13 @@ final class PresenceRealtimeClientTest extends Scope
             );
             $this->assertSame(404, $read['headers']['status-code']);
         } finally {
+            // Publisher is closed mid-body to trigger onClose; guard against a double close
+            // and still tear it down if an earlier assertion threw first.
+            try {
+                $publisher->close();
+            } catch (\Throwable) {
+                // Already closed.
+            }
             $listener->close();
         }
     }
