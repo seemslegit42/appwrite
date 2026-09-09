@@ -1448,7 +1448,9 @@ $server->onClose(function (int $connection) use ($realtime, $stats, $register, $
                                 'projectId' => $projectId,
                                 'userId' => $userId ?? 'n/a',
                                 'presences' => \count($presenceIds),
-                                'presenceIds' => \implode(',', $presenceIds),
+                                // Bounded sample; total is carried by `presences` above so the
+                                // tag cannot blow past telemetry length limits on a busy connection.
+                                'presenceIds' => \implode(',', \array_slice($presenceIds, 0, 10)),
                             ]);
                         }
 
