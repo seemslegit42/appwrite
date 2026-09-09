@@ -1407,7 +1407,7 @@ $server->onClose(function (int $connection) use ($realtime, $stats, $register, $
                             return;
                         }
 
-                        $presenceIds = \array_map('strval', \array_keys($presencesById));
+                        $presenceIds = \array_map(strval(...), \array_keys($presencesById));
                         $dbForProject = getProjectDB($project);
 
                         $user = new User([]);
